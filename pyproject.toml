@@ -5,16 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "black>=26.5.0",
-    "boto3>=1.43.9",
-    "isort>=8.0.1",
+    "black>=26.10.1",
+    "boto3>=1.44.4",
+    "isort>=9.0.2",
     "jupyter>=1.1.1",
-    "matplotlib>=3.10.9",
-    "numpy>=2.4.5",
-    "pandas>=3.0.3",
-    "pandas-stubs~=3.0.3",
-    "python-dotenv>=1.2.2",
-    "sagemaker>=2.240,<3",
-    "scikit-learn>=1.8.0",
-    "xgboost>=3.2.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.5",
+    "pandas>=3.1.1",
+    "pandas-stubs>=3.1.0.261029",
+    "python-dotenv>=1.2.4",
+    "sagemaker>=2.257.7,<3",
+    "scikit-learn>=1.9.1",
+    "xgboost>=3.4.1",
 ]
