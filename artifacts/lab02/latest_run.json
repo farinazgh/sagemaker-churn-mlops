@@ -1,0 +1,20 @@
+{
+  "job_name": "churn-p02-20261117-172001-07bb8e7b",
+  "region": "us-east-1",
+  "account": "339712939282",
+  "bucket": "sagemaker-churn-339712939282-us-east-1",
+  "prefix": "lab02/runs/churn-p02-20261117-172001-07bb8e7b",
+  "image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3",
+  "input_objects": {
+    "data": {
+      "uri": "s3://sagemaker-churn-339712939282-us-east-1/lab02/runs/churn-p02-20261117-172001-07bb8e7b/input/data/churn.txt",
+      "version_id": "1EzPQpjsoGNM1AUuXQDjpKDjAGABT70A",
+      "sha256": "f2bbe2a120317bc0228beec59da1fcbc31d589280b1b674814eaf5174c2ca6cc"
+    },
+    "code": {
+      "uri": "s3://sagemaker-churn-339712939282-us-east-1/lab02/runs/churn-p02-20261117-172001-07bb8e7b/input/code/preprocess.py",
+      "version_id": "ZagnQYjwMg4NCBLBlE.J6TGSTxfXyz3j",
+      "sha256": "372b9554d13c895e00ea1c4dcf0c76f11b3e8c0ebcf8fc698ed19d3d1d31dba3"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "raw_sha256": "f2bbe2a120317bc0228beec59da1fcbc31d589280b1b674814eaf5174c2ca6cc",
+  "rows": 5000,
+  "seed": 42,
+  "raw_churn_rate": 0.4996,
+  "feature_count": 103,
+  "dropped_columns": [
+    "Phone"
+  ],
+  "splits": {
+    "train": {
+      "rows": 3000,
+      "churn_rate": 0.49966666666666665,
+      "sha256": "0e9e7a8b6b151f7cb80d231922541014fb09605f65b86b065883cfbd20380a61",
+      "unknown_categories": {
+        "State": 0,
+        "Area Code": 0,
+        "Int'l Plan": 0,
+        "VMail Plan": 0
+      }
+    },
+    "validation": {
+      "rows": 1000,
+      "churn_rate": 0.5,
+      "sha256": "866cc6dcebc7acc8d5416db6cbde582ea8083ea263f88a1eb80c0b7ec105393e",
+      "unknown_categories": {
+        "State": 0,
+        "Area Code": 0,
+        "Int'l Plan": 0,
+        "VMail Plan": 0
+      }
+    },
+    "test": {
+      "rows": 1000,
+      "churn_rate": 0.499,
+      "sha256": "93b537c5064be316111e0bbdbce31974ddac556be09fb3d2b43450394cf9daf2",
+      "unknown_categories": {
+        "State": 0,
+        "Area Code": 0,
+        "Int'l Plan": 0,
+        "VMail Plan": 0
+      }
+    }
+  },
+  "versions": {
+    "pandas": "1.1.3"
+  }
+}
