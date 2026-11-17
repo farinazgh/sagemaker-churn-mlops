@@ -1449,7 +1449,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.11.2" },
     { name = "numpy", specifier = ">=2.5.5" },
     { name = "pandas", specifier = ">=3.1.1" },
-    { name = "pandas-stubs", specifier = ">=3.0.5.260914" },
+    { name = "pandas-stubs", specifier = ">=3.1.0.261029" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
     { name = "sagemaker", specifier = ">=2.257.7,<3" },
     { name = "scikit-learn", specifier = ">=1.9.1" },
