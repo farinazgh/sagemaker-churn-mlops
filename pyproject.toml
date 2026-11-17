@@ -7,6 +7,7 @@ requires-python = ">=3.14"
 dependencies = [
     "black>=26.10.1",
     "boto3>=1.44.4",
+    "boto3-stubs>=1.44.4",
     "isort>=9.0.2",
     "jupyter>=1.1.1",
     "matplotlib>=3.11.2",
@@ -14,7 +15,7 @@ dependencies = [
     "pandas>=3.1.1",
     "pandas-stubs>=3.1.0.261029",
     "python-dotenv>=1.2.4",
-    "sagemaker>=2.257.7,<3",
+    "sagemaker>=3,<4",
     "scikit-learn>=1.9.1",
     "xgboost>=3.4.1",
 ]
