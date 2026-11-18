@@ -1,0 +1,8 @@
+{
+  "algorithm": "xgboost",
+  "job_name": "churn-l03-xgboost-2026-11-18-07-18-06-903",
+  "image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-xgboost:3.0-5",
+  "processing_job": "churn-p02-20261117-172001-07bb8e7b",
+  "model_uri": "s3://sagemaker-churn-339712939282-us-east-1/lab03/runs/churn-l03-xgboost-2026-11-18-07-18-06-903/output/model.tar.gz",
+  "metrics": {}
+}

@@ -1,0 +1,15 @@
+{
+  "algorithm": "tree",
+  "job_name": "churn-l03-tree-2026-11-18-06-55-12-654",
+  "image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.4-2-cpu-py3",
+  "processing_job": "churn-p02-20261117-172001-07bb8e7b",
+  "model_uri": "s3://sagemaker-churn-339712939282-us-east-1/lab03/runs/churn-l03-tree-2026-11-18-06-55-12-654/output/model.tar.gz",
+  "metrics": {
+    "recall": 0.9279999732971191,
+    "f1": 0.8804554343223572,
+    "average_precision": 0.8826526999473572,
+    "accuracy": 0.8740000128746033,
+    "roc_auc": 0.9147340059280396,
+    "precision": 0.8375451564788818
+  }
+}
