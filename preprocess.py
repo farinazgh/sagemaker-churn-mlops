@@ -1,4 +1,4 @@
-"""Reproducible, leakage-aware preprocessing for the AWS churn.txt sample."""
+"""Clean, split and encode the churn dataset locally or in SageMaker."""
 
 import argparse
 import hashlib
@@ -28,7 +28,6 @@ NUM = [
     "Intl Charge",
     "CustServ Calls",
 ]
-REQUIRED = set(CAT + NUM + ["Phone", TARGET])
 SEED = 42
 
 
@@ -37,52 +36,56 @@ def sha256(path):
 
 
 def load_data(path):
-    print(f"Loading dataset: {path}")
     df = pd.read_csv(path)
     df.columns = df.columns.str.strip().str.replace("’", "'", regex=False)
-    if set(df.columns) != REQUIRED or df.columns.duplicated().any():
-        raise ValueError(
-            f"Schema mismatch: missing={REQUIRED-set(df.columns)}, extra={set(df.columns)-REQUIRED}"
-        )
-    if df.isna().any().any():
-        raise ValueError(
-            f"Missing values: {df.isna().sum().loc[lambda x:x>0].to_dict()}"
-        )
-    if df.duplicated().any():
-        raise ValueError("Duplicate raw rows; resolve before splitting.")
-    label = df[TARGET].astype(str).str.strip().str.lower().str.rstrip(".")
-    if set(label.unique()) != {"true", "false"}:
-        raise ValueError("Expected exactly true/false labels.")
-    df[TARGET] = label.map({"true": 1, "false": 0}).astype(int)
-    for col in CAT:
-        df[col] = df[col].astype(str).str.strip()
-        if (df[col] == "").any():
-            raise ValueError(f"Empty categorical value: {col}")
-    for col in ["Int'l Plan", "VMail Plan"]:
-        df[col] = df[col].str.lower()
-        if not set(df[col].unique()) <= {"yes", "no"}:
-            raise ValueError(f"Unexpected values in {col}")
-    for col in NUM:
-        df[col] = pd.to_numeric(df[col], errors="raise")
-        if not np.isfinite(df[col]).all() or (df[col] < 0).any():
-            raise ValueError(f"Nonfinite/negative numeric data in {col}")
-    # Drop the identifier before modeling. Check repeated identifiers first so
-    # observations of a single customer cannot land in different splits.
-    if (
-        df.assign(Phone=df["Phone"].astype(str).str.strip())
-        .duplicated(subset=["Area Code", "Phone"])
-        .any()
-    ):
-        raise ValueError(
-            "Repeated area-code/phone identifiers: investigate or use group-wise splitting."
-        )
-    df = df.drop(columns="Phone")
-    return df
+    expected = set(CAT + NUM + ["Phone", TARGET])
+    if set(df.columns) != expected or df.columns.duplicated().any():
+        raise ValueError("Unexpected dataset columns")
+    if df.isna().any().any() or df.duplicated().any():
+        raise ValueError("Dataset contains missing values or duplicate rows")
+
+    # Like Spark StringIndexer, but explicitly map the binary target.
+    labels = df[TARGET].astype(str).str.strip().str.lower().str.rstrip(".")
+    if set(labels.unique()) != {"true", "false"}:
+        raise ValueError("Expected True./False. churn labels")
+    df[TARGET] = labels.map({"true": 1, "false": 0})
+
+    for column in CAT:
+        df[column] = df[column].astype(str).str.strip()
+        if (df[column] == "").any():
+            raise ValueError(f"Empty category: {column}")
+    for column in ["Int'l Plan", "VMail Plan"]:
+        df[column] = df[column].str.lower()
+        if not df[column].isin(["yes", "no"]).all():
+            raise ValueError(f"Expected yes/no: {column}")
+    df[NUM] = df[NUM].apply(pd.to_numeric)
+    if not np.isfinite(df[NUM].to_numpy()).all() or (df[NUM] < 0).any().any():
+        raise ValueError("Invalid numeric values")
+
+    # A customer must not occur in different splits.
+    df["Phone"] = df["Phone"].astype(str).str.strip()
+    if df.duplicated(["Area Code", "Phone"]).any():
+        raise ValueError("Repeated customer identifiers")
+    return df.drop(columns="Phone")
+
+
+def split_data(df):
+    # Stratification preserves the churn ratio in each independent split.
+    train, holdout = train_test_split(
+        df, test_size=0.4, random_state=SEED, stratify=df[TARGET]
+    )
+    validation, test = train_test_split(
+        holdout, test_size=0.5, random_state=SEED, stratify=holdout[TARGET]
+    )
+    return train, validation, test
 
 
 def fit_schema(train):
-    categories = {c: sorted(train[c].unique().tolist()) for c in CAT}
-    columns = NUM + [f"{c}={v}" for c in CAT for v in categories[c]]
+    # Learn categories from training data only, not validation or test.
+    categories = {column: sorted(train[column].unique()) for column in CAT}
+    feature_columns = NUM.copy()
+    for column, values in categories.items():
+        feature_columns.extend(f"{column}={value}" for value in values)
     return {
         "schema_version": 1,
         "target": TARGET,
@@ -90,37 +93,47 @@ def fit_schema(train):
         "header": False,
         "numeric_columns": NUM,
         "categories": categories,
-        "feature_columns": columns,
+        "feature_columns": feature_columns,
         "unknown_category_policy": "all zero within that categorical feature",
     }
 
 
 def transform(df, schema):
-    features = {c: df[c].astype(float) for c in schema["numeric_columns"]}
+    # Equivalent to fitting a Spark encoder on train and applying it to all splits.
+    features = df[schema["numeric_columns"]].astype(float).copy()
     unknown = {}
-    for c, values in schema["categories"].items():
-        unknown[c] = int((~df[c].isin(values)).sum())
+    for column, values in schema["categories"].items():
+        unknown[column] = int((~df[column].isin(values)).sum())
         for value in values:
-            features[f"{c}={value}"] = (df[c] == value).astype(int)
-    x = pd.DataFrame(features, index=df.index)[schema["feature_columns"]]
-    return pd.concat([df[TARGET], x], axis=1), unknown
+            features[f"{column}={value}"] = (df[column] == value).astype(int)
+    # SageMaker XGBoost expects the target in column zero.
+    return pd.concat([df[TARGET], features[schema["feature_columns"]]], axis=1), unknown
+
+
+def write_datasets(train, validation, test, schema, output_dir):
+    splits = {}
+    for name, df in [("train", train), ("validation", validation), ("test", test)]:
+        encoded, unknown = transform(df, schema)
+        path = output_dir / name / f"{name}.csv"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        encoded.to_csv(path, header=False, index=False)
+        splits[name] = {
+            "rows": len(df),
+            "churn_rate": float(df[TARGET].mean()),
+            "sha256": sha256(path),
+            "unknown_categories": unknown,
+        }
+        print(f"{name}: {encoded.shape}, churn rate: {df[TARGET].mean():.4f}")
+    return splits
 
 
 def run(input_file, output_dir):
     df = load_data(input_file)
-    train, holdout = train_test_split(
-        df, test_size=0.4, random_state=SEED, stratify=df[TARGET]
-    )
-    val, test = train_test_split(
-        holdout, test_size=0.5, random_state=SEED, stratify=holdout[TARGET]
-    )
-    assert not (
-        set(train.index) & set(val.index)
-        or set(train.index) & set(test.index)
-        or set(val.index) & set(test.index)
-    )
+    train, validation, test = split_data(df)
     schema = fit_schema(train)
-    out = Path(output_dir)
+    output_dir = Path(output_dir)
+    splits = write_datasets(train, validation, test, schema, output_dir)
+
     report = {
         "raw_sha256": sha256(input_file),
         "rows": len(df),
@@ -128,35 +141,23 @@ def run(input_file, output_dir):
         "raw_churn_rate": float(df[TARGET].mean()),
         "feature_count": len(schema["feature_columns"]),
         "dropped_columns": ["Phone"],
-        "splits": {},
+        "splits": splits,
         "versions": {"pandas": pd.__version__},
     }
-    for name, part in [("train", train), ("validation", val), ("test", test)]:
-        encoded, unknown = transform(part, schema)
-        dest = out / name / f"{name}.csv"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        encoded.to_csv(dest, index=False, header=False)
-        report["splits"][name] = {
-            "rows": len(part),
-            "churn_rate": float(part[TARGET].mean()),
-            "sha256": sha256(dest),
-            "unknown_categories": unknown,
-        }
-    meta = out / "metadata"
-    meta.mkdir(parents=True, exist_ok=True)
-    (meta / "feature_schema.json").write_text(
+    metadata = output_dir / "metadata"
+    metadata.mkdir(parents=True, exist_ok=True)
+    (metadata / "feature_schema.json").write_text(
         json.dumps(schema, indent=2), encoding="utf-8"
     )
-    (meta / "data_report.json").write_text(
+    (metadata / "data_report.json").write_text(
         json.dumps(report, indent=2), encoding="utf-8"
     )
-    print(json.dumps(report, indent=2))
     return report
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--input-file", required=True)
-    p.add_argument("--output-dir", required=True)
-    a = p.parse_args()
-    run(a.input_file, a.output_dir)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--input-file", required=True)
+    parser.add_argument("--output-dir", required=True)
+    args = parser.parse_args()
+    run(args.input_file, args.output_dir)
