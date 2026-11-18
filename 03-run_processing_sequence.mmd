@@ -1,0 +1,29 @@
+sequenceDiagram
+    participant Local as Local Python
+    participant S3 as Amazon S3
+    participant SM as SageMaker AI
+    participant EC2 as Training Instance
+    participant ECR as Amazon ECR
+    participant CW as CloudWatch
+
+    Note over Local: 1. Read Lab 02 output locations
+    Local->>S3: 2. Package and upload train_churn.py
+    Local->>SM: 3. CreateTrainingJob
+    SM->>EC2: 4. Provision ml.m5.large
+    EC2->>ECR: 5. Pull training container image
+    ECR-->>EC2: Scikit-learn or XGBoost image
+    EC2->>S3: 6. Download training and validation datasets
+    S3-->>EC2: train.csv and validation.csv
+
+    rect rgba(70, 130, 180, 0.1)
+        Note over EC2: 7. Execute train_churn.py
+        EC2->>EC2: Fit model
+        EC2->>EC2: 8. Calculate validation metrics
+        EC2-->>CW: 9. Stream training logs and metrics
+    end
+
+    EC2->>S3: 10. Upload model.tar.gz
+    SM->>EC2: 11. Release training instance
+    Local->>SM: 12. DescribeTrainingJob
+    SM-->>Local: Model artifact URI and training metrics
+    Note over Local: Save training results as JSON

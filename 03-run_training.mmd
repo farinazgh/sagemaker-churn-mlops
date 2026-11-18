@@ -1,0 +1,22 @@
+flowchart LR
+    A[01. Local Python] --> B[02. Upload code to S3]
+    B --> C[03. CreateTrainingJob]
+    C --> D[04. Provision compute]
+    D --> E[05. Pull ECR image]
+    E --> F[06. Download datasets from S3]
+    F --> G[07. Train model]
+    G --> H[08. Evaluate model]
+    H --> I[10. Upload model.tar.gz to S3]
+    I --> J[11. Release compute]
+    J --> K[12. DescribeTrainingJob]
+
+    G -.-> L[09. CloudWatch Logs and Metrics]
+    H -.-> L
+
+    classDef aws fill:#FF9900,stroke:#cc7a00,color:#000
+    classDef ml fill:#2563eb,stroke:#1d4ed8,color:#fff
+    classDef storage fill:#3f8624,stroke:#286419,color:#fff
+
+    class C,D,E,J,K aws
+    class G,H ml
+    class B,F,I storage
